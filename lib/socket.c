@@ -30,6 +30,7 @@
 #include "defs.h"
 
 #include <netlink-private/netlink.h>
+#include <netlink-private/socket.h>
 #include <netlink/netlink.h>
 #include <netlink/utils.h>
 #include <netlink/handlers.h>
@@ -97,7 +98,7 @@ static void release_local_port(uint32_t port)
 {
 	int nr;
 
-	if (port == UINT32_MAX)
+	if (port == UINT32_MAX || port == 0)
 		return;
 	
 	nr = port >> 22;
@@ -105,6 +106,35 @@ static void release_local_port(uint32_t port)
 	nl_write_lock(&port_map_lock);
 	used_ports_map[nr / 32] &= ~(1 << (nr % 32));
 	nl_write_unlock(&port_map_lock);
+}
+
+void _nl_socket_used_ports_release_all(const uint8_t *used_ports)
+{
+	int i;
+
+	for (i = 0; i < 32; i++) {
+		if (used_ports[i] != 0) {
+			nl_write_lock(&port_map_lock);
+			for (; i < 32; i++) {
+				BUG_ON((used_ports_map[i] & used_ports[i]) != used_ports[i]);
+				used_ports_map[i] &= ~(used_ports[i]);
+			}
+			nl_write_unlock(&port_map_lock);
+			return;
+		}
+	}
+}
+
+void _nl_socket_used_ports_set(uint8_t *used_ports, uint32_t port)
+{
+	int nr;
+
+	nr = port >> 22;
+
+	BUG_ON(port == UINT32_MAX || port == 0 || (getpid() & 0x3FFFFF) != (port & 0x3FFFFF));
+	BUG_ON(used_ports[nr / 32] & (1 << (nr % 32)));
+
+	used_ports[nr / 32] |= (1 << (nr % 32));
 }
 
 /**
@@ -125,7 +155,7 @@ static struct nl_sock *__alloc_socket(struct nl_cb *cb)
 	sk->s_local.nl_family = AF_NETLINK;
 	sk->s_peer.nl_family = AF_NETLINK;
 	sk->s_seq_expect = sk->s_seq_next = time(0);
-	sk->s_local.nl_pid = generate_local_port();
+	sk->s_local.nl_pid = 0;
 
 	return sk;
 }
@@ -261,6 +291,11 @@ void nl_socket_enable_auto_ack(struct nl_sock *sk)
 
 /** @} */
 
+int _nl_socket_is_local_port_unspecified(struct nl_sock *sk)
+{
+	return (sk->s_local.nl_pid == 0);
+}
+
 /**
  * @name Source Idenficiation
  * @{
@@ -268,7 +303,26 @@ void nl_socket_enable_auto_ack(struct nl_sock *sk)
 
 uint32_t nl_socket_get_local_port(const struct nl_sock *sk)
 {
+	if (sk->s_local.nl_pid == 0) {
+		/* modify the const argument sk. This is justified, because
+		 * nobody ever saw the local_port from externally. So, we
+		 * initilize it on first use. */
+		nl_socket_set_local_port ((struct nl_sock *) sk, 0);
+	}
 	return sk->s_local.nl_pid;
+}
+
+uint32_t _nl_socket_generate_local_port_no_release(struct nl_sock *sk)
+{
+	uint32_t port;
+
+	/* similar to nl_socket_set_local_port(sk, 0), but do not release
+	 * the previously generated port. */
+
+	port = generate_local_port();
+	sk->s_flags &= ~NL_OWN_PORT;
+	sk->s_local.nl_pid = port;
+	return port;
 }
 
 /**
