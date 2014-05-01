@@ -76,6 +76,16 @@
  *       be closed automatically if any of the `exec` family functions succeed.
  *       This is essential for multi threaded programs.
  *
+ * @note The local port (`nl_socket_get_local_port()`) is unspecified after
+ *       creating a new socket. It only gets determined when accessing the
+ *       port the first time or during `nl_connect()`. When nl_connect()
+ *       fails during `bind()` due to `ADDRINUSE`, it will retry with
+ *       different ports if the port is unspecified. Unless you want to enforce
+ *       the use of a specific local port, don't access the local port (or
+ *       reset it to `unspecified` by calling `nl_socket_set_local_port(sk, 0)`).
+ *       This capability is indicated by
+ *       `%NL_CAPABILITY_NL_CONNECT_RETRY_GENERATE_PORT_ON_ADDRINUSE`.
+ *
  * @see nl_socket_alloc()
  * @see nl_close()
  *
