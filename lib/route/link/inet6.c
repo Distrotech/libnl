@@ -168,7 +168,7 @@ static int inet6_parse_protinfo(struct rtnl_link *link, struct nlattr *attr,
 
 	if (tb[IFLA_INET6_ADDR_GEN_MODE])
 		i6->i6_addr_gen_mode = nla_get_u8 (tb[IFLA_INET6_ADDR_GEN_MODE]);
- 
+
 	/*
 	 * Due to 32bit data alignment, these addresses must be copied to an
 	 * aligned location prior to access.
@@ -537,7 +537,7 @@ int rtnl_link_inet6_get_addr_gen_mode(struct rtnl_link *link, uint8_t *mode)
 {
 	struct inet6_data *id;
 
-	if (!(id = rtnl_link_af_alloc(link, &inet6_ops)))
+	if (!(id = rtnl_link_af_data(link, &inet6_ops)))
 		return -NLE_NOATTR;
 
 	if (id->i6_addr_gen_mode == I6_ADDR_GEN_MODE_UNKNOWN)
@@ -555,14 +555,14 @@ int rtnl_link_inet6_get_addr_gen_mode(struct rtnl_link *link, uint8_t *mode)
  * Sets the link's IPv6 link-local address generation mode.
  *
  * @return 0 on success
- * @return -NLE_NOATTR configuration setting not available
+ * @return -NLE_NOMEM could not allocate inet6 data
  */
 int rtnl_link_inet6_set_addr_gen_mode(struct rtnl_link *link, uint8_t mode)
 {
 	struct inet6_data *id;
 
 	if (!(id = rtnl_link_af_alloc(link, &inet6_ops)))
-		return -NLE_NOATTR;
+		return -NLE_NOMEM;
 
 	id->i6_addr_gen_mode = mode;
 	return 0;
