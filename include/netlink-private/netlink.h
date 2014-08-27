@@ -144,8 +144,6 @@ static inline int nl_cb_call(struct nl_cb *cb, int type, struct nl_msg *msg)
 	return ret;
 }
 
-#define ARRAY_SIZE(X) (sizeof(X) / sizeof((X)[0]))
-
 /* This is also defined in stddef.h */
 #ifndef offsetof
 #define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)

@@ -118,6 +118,10 @@ enum {
 };
 int nl_has_capability (int capability);
 
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(X) (sizeof(X) / sizeof((X)[0]))
+#endif
+
 #ifdef __cplusplus
 }
 #endif
