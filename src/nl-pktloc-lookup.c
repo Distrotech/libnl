@@ -73,8 +73,8 @@ static char *get_align_txt(struct rtnl_pktloc *loc)
 {
 	static char buf[16];
 
-	if (loc->align <= 4)
-		strcpy(buf, align_txt[loc->align]);
+	if (loc->align < ARRAY_SIZE(align_txt))
+		strncpy(buf, align_txt[loc->align], sizeof(buf) - 1);
 	else
 		snprintf(buf, sizeof(buf), "%u", loc->align);
 
